@@ -1,0 +1,4 @@
+scripts
+=======
+
+My ~/bin folder
