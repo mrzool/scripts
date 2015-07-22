@@ -1,0 +1,44 @@
+#!/usr/bin/env perl
+
+use Text::CSV;
+use Getopt::Long   qw/ GetOptionsFromArray :config pass_through /;
+use warnings;
+use strict;
+
+my $usage = "usage: $0 [-e] < file.csv\n";
+
+exit main( @ARGV );
+
+
+sub main
+{
+  my $escape = 0;
+
+  GetOptionsFromArray( \@_, 'escape' => \$escape ) or die $usage;
+
+  my $csv = Text::CSV->new( { binary => 1 } );
+  my $in = \*STDIN;
+
+  while (my $row = $csv->getline( $in )) {
+    @$row = map c_escape($_) => @$row if $escape;
+    print join("\t" => @$row) . $/;
+  }
+
+  $csv->eof or $csv->error_diag();
+
+  return 0;
+}
+
+
+sub c_escape
+{
+  my $str = shift;
+  my %escapes =
+  (
+    "\\" => "\\\\",
+    "\n" => "\\n",
+    "\t" => "\\t",
+  );
+  $str =~ s/([\\\n\t])/ $escapes{$1} /ge;
+  return $str;
+}
