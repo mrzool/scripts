@@ -1,4 +1,4 @@
 scripts
 =======
 
-My ~/bin folder.
+My `~/bin` folder. Stuff may be broken.
