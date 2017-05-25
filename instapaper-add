@@ -1,0 +1,2 @@
+#!/bin/bash
+curl -s -d username="zool.bib@gmail.com" -d password="`security find-internet-password -g -w -j instapaper`" -d url="`cat -`" https://www.instapaper.com/api/add;
