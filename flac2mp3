@@ -1,0 +1,5 @@
+#!/bin/bash
+[[ $# == 0 ]] && set -- *.flac
+for f; do
+  ffmpeg -hide_banner -i "$f" -qscale:a 0 "${f[@]/%flac/mp3}"
+done
