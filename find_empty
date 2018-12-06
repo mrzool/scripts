@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Find all empty subdirs in current dir
+find . -depth -empty
