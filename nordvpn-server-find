@@ -1,0 +1,159 @@
+#!/usr/bin/env bash
+# Script: nordvpn-server-find
+# Author: Mattia Tezzele <info@mrzool.cc>
+# Date: December 2017
+
+# Dependencies check
+if ((BASH_VERSINFO[0] < 4))
+then 
+  2>&1 echo "Error: This script requires at least Bash 4.0"
+  exit 1
+fi
+
+type jq >/dev/null 2>&1 || { 2>&1 echo "Missing dependency: This script requires jq 1.5"; exit 1; }
+
+# Reset in case getopts has been used previously in the shell.
+OPTIND=1
+
+location=false
+capacity=30 # Default capacity value is 30%
+limit=20 # Default limit value is 20
+
+iso_codes=(
+  'ad' 'ae' 'af' 'ag' 'ai' 'al' 'am' 'ao' 'aq' 'ar' 'as' 'at' 'au' 'aw' 'ax'
+  'az' 'ba' 'bb' 'bd' 'be' 'bf' 'bg' 'bh' 'bi' 'bj' 'bl' 'bm' 'bn' 'bo' 'bq'
+  'br' 'bs' 'bt' 'bv' 'bw' 'by' 'bz' 'ca' 'cc' 'cd' 'cf' 'cg' 'ch' 'ci' 'ck'
+  'cl' 'cm' 'cn' 'co' 'cr' 'cu' 'cv' 'cw' 'cx' 'cy' 'cz' 'de' 'dj' 'dk' 'dm'
+  'do' 'dz' 'ec' 'ee' 'eg' 'eh' 'er' 'es' 'et' 'fi' 'fj' 'fk' 'fm' 'fo' 'fr'
+  'ga' 'gb' 'gd' 'ge' 'gf' 'gg' 'gh' 'gi' 'gl' 'gm' 'gn' 'gp' 'gq' 'gr' 'gs'
+  'gt' 'gu' 'gw' 'gy' 'hk' 'hm' 'hn' 'hr' 'ht' 'hu' 'id' 'ie' 'il' 'im' 'in'
+  'io' 'iq' 'ir' 'is' 'it' 'je' 'jm' 'jo' 'jp' 'ke' 'kg' 'kh' 'ki' 'km' 'kn'
+  'kp' 'kr' 'kw' 'ky' 'kz' 'la' 'lb' 'lc' 'li' 'lk' 'lr' 'ls' 'lt' 'lu' 'lv'
+  'ly' 'ma' 'mc' 'md' 'me' 'mf' 'mg' 'mh' 'mk' 'ml' 'mm' 'mn' 'mo' 'mp' 'mq'
+  'mr' 'ms' 'mt' 'mu' 'mv' 'mw' 'mx' 'my' 'mz' 'na' 'nc' 'ne' 'nf' 'ng' 'ni'
+  'nl' 'no' 'np' 'nr' 'nu' 'nz' 'om' 'pa' 'pe' 'pf' 'pg' 'ph' 'pk' 'pl' 'pm'
+  'pn' 'pr' 'ps' 'pt' 'pw' 'py' 'qa' 're' 'ro' 'rs' 'ru' 'rw' 'sa' 'sb' 'sc'
+  'sd' 'se' 'sg' 'sh' 'si' 'sj' 'sk' 'sl' 'sm' 'sn' 'so' 'sr' 'ss' 'st' 'sv'
+  'sx' 'sy' 'sz' 'tc' 'td' 'tf' 'tg' 'th' 'tj' 'tk' 'tl' 'tm' 'tn' 'to' 'tr'
+  'tt' 'tv' 'tw' 'tz' 'ua' 'ug' 'uk' 'um' 'us' 'uy' 'uz' 'va' 'vc' 've' 'vg'
+  'vi' 'vn' 'vu' 'wf' 'ws' 'ye' 'yt' 'za' 'zm' 'zw'
+  )
+
+array_contains () { 
+  local array="$1[@]"
+  local seeking=$2
+  local in=1
+  for element in "${!array}"; do
+    if [[ $element == "$seeking" ]]; then
+      in=0
+      break
+    fi
+  done
+  return $in
+}
+
+while getopts ":l:c:n:h" opt; do
+    case "$opt" in
+    h)
+      echo
+      echo "nordvpn-server-find -l $(tput smul)location$(tput rmul) -c $(tput smul)capacity$(tput rmul) -n $(tput smul)limit$(tput rmul)"
+      echo
+      echo "$(tput smul)location$(tput rmul)   2-letter ISO 3166-1 country code (ex: us, uk, de)"
+      echo "$(tput smul)capacity$(tput rmul)   current server load, integer between 1-100 (defaults to 30)"
+      echo "$(tput smul)limit$(tput rmul)      limits number of results, integer between 1-100 (defaults to 20)"
+      echo
+      exit 0
+      ;;
+    l)
+      array_contains iso_codes "${OPTARG,,}"  && location=${OPTARG,,} >&2 || \
+        { 
+          >&2 echo "Invalid location parameter."
+          >&2 echo "Please provide a valid ISO 3166-1 country code to -l."
+          >&2 echo "(ex: -l us)"
+          exit 1
+        }
+      ;;
+    c)
+      if [[ "$OPTARG" =~ ^[0-9]+$ ]] && [ "$OPTARG" -ge 1 -a "$OPTARG" -le 100 ]; 
+      then 
+        capacity=$OPTARG >&2; 
+      else
+        { 
+          >&2 echo "Invalid capacity parameter."
+          >&2 echo "Please provide an integer between 1-100 to -c."
+          >&2 echo "(ex: -c 90)"
+          exit 1
+        }
+      fi
+      ;;
+    n)
+      if [[ "$OPTARG" =~ ^[0-9]+$ ]] && [ "$OPTARG" -ge 1 -a "$OPTARG" -le 100 ]; 
+      then 
+        limit=$OPTARG >&2; 
+      else
+        { 
+          >&2 echo "Invalid limit parameter."
+          >&2 echo "Please provide an integer between 1-100 to -n."
+          >&2 echo "(ex: -n 50)"
+          exit 1
+        }
+      fi
+      ;;
+    :)
+      >&2 echo "Option -$OPTARG requires an argument."
+      >&2 echo "Use -h to show the help."
+      exit 1
+      ;;
+    \?)
+      >&2 echo "Invalid option: -$OPTARG"
+      >&2 echo "Use -h to show the help."
+      exit 1
+      ;;
+    esac
+done
+
+if [[ "$location" == false ]];
+then
+    >&2 echo "A location parameter is required."
+    >&2 echo "Please provide a valid location parameter using the -l option."
+    >&2 echo "(ex: -l us)"
+    >&2 echo "Use -h to show the help."
+    exit 1
+fi
+
+echo
+echo "Looking for servers located in $(tput bold)${location^^}$(tput sgr0) with server load lower than $(tput bold)$capacity%$(tput sgr0)..."
+echo
+
+
+servers=$(curl --silent https://nordvpn.com/api/server/stats)
+
+# Declare and populate array
+declare -A results
+while IFS="=" read -r key value
+do
+    results[$key]="$value"
+done < <(jq --compact-output -r --arg location "$location" --arg capacity "$capacity" --arg limit "$limit" \
+  '[. |
+  to_entries[] |
+  {key: .key, value: .value.percent} |
+  select(.value <= ($capacity|tonumber)) |
+  select(.key|contains($location))] |
+  sort_by(.value) |
+  from_entries |
+  to_entries |
+  map("\(.key)=\(.value|tostring)") |
+  limit(($limit|tonumber);.[])' <<<"$servers")
+
+# Print out results
+if [ ${#results[@]} -eq 0 ]; then
+  >&2 echo "$(tput setaf 1)No servers found :("
+else
+  for key in "${!results[@]}"
+  do
+    echo -e "$(tput setaf 6 && tput bold)$key $(tput sgr0) ${results[$key]}%"
+  done |
+    awk '{print $NF,$0}' | sort -n | cut -f2- -d' ' | column -t
+fi
+
+echo
