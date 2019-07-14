@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Renames every file contained in every subdirectory after the subdirectory's name itself
+# To be run in dokumentar/, spiel/ und kinder/ respectively
+for subdir in *; do
+  counter=0
+  for file in $subdir/*; do
+    mv "$file" $subdir/$subdir-poster-$((counter+1)).jpg && ((counter++))
+    # mv "$file" $subdir/$subdir-logo-$((counter+1)).jpg && ((counter++))
+    # mv "$file" $subdir/$subdir-still-$((counter+1)).jpg && ((counter++))
+  done
+done
