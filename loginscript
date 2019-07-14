@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Script to be run at user login through a launchd plist, saved in a repo
+# named LaunchAgents
+
+# Launchd is a little fragile bitch. Among its many quirks, the funniest
+# one is that it doesn't resolve the $PATH properly, so if you decide to run
+# a custom script through it, *literally no fucking command in your script
+# will work*. The only solution I've found, after hours of struggling and
+# when I was ready to give up, is to manually set the PATH in the called script
+# itself. It's this, or using absolute paths everywhere (that means not only in
+# your script, but also in every script called by your script). Don't trust anyone
+# who tells you otherwise. They're all lying. Setting `EnvironmentVariables` in
+# your plist won't work. Fine-tuning ownership and permissions won't work.
+# Double-checking PATH definitions for non-login shells won't work either.
+# Just chuck a PATH definition in your script and shut the fuck up. You're welcome.
+export PATH=/usr/local/bin/:/Users/zool/bin/:$PATH
+
+# The watched path is a git repo, where I gitignored everything except
+# for the file 'iTunes Music Library.xml'
+gitwatch -r origin /Users/zool/Music/iTunes/
