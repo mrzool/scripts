@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Find all files in current directory recursively excluding hidden files/folders
+find . -type f -not -path '*/\.*'
