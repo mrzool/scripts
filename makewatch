@@ -1,0 +1,49 @@
+#!/bin/bash -e
+
+# Don Marti <dmarti@zgp.org>
+# (If you need a license on this in order to use it,
+# mail me and I'll put a license on it.  Otherwise,
+# de minimis non curat lex.)
+
+# re-run make, with the supplied arguments, when a
+# Makefile prerequisite changes.  Example:
+#   makewatch test
+# Fun to use with Auto Reload (Firefox) or Tincr (Chrome) and Pandoc
+#   https://addons.mozilla.org/en-US/firefox/addon/auto-reload/
+#   http://tin.cr/
+#   http://johnmacfarlane.net/pandoc/
+# Requires inotifywait.  Probably requires GNU Make to
+# get the right "-dnr" output.  Not tested with other
+# "make" implementations
+
+# If $MAKEWATCH is set to an existing file or
+# space-separated list of files, also checks those.
+
+make_prereqs() {
+    # Make "make" figure out what files it's interested in.
+    echo "Makefile"
+    find $MAKEWATCH
+    gmake -dnr $* | tr ' ' '\n' | \
+        grep ".*'.$" | grep -o '\w.*\b'
+}
+
+prereq_files() {
+    # prerequisites mentioned in a Makefile
+    # that are extant files
+    echo ' '
+    for f in `make_prereqs $* | sort -u`; do
+        [ -e $f ] && echo -n "$f ";
+    done
+    echo
+}
+
+make $*
+while true; do
+    fl=$(prereq_files $*)
+    ev=$(inotifywait --quiet --format %e $fl)
+    if [ "xOPEN" != "x$ev" ]; then
+        sleep 1
+        make $*
+    fi
+done
+

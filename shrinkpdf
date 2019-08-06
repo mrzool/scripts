@@ -96,4 +96,8 @@ fi
 
 shrink "$IFILE" "$OFILE" "$res" || exit $?
 
+<<<<<<< HEAD
 check_smaller "$IFILE" "$OFILE"
+=======
+check_smaller "$IFILE" "$OFILE"
+>>>>>>> 90fe3e39ebe2d03721107defad5979bffafcc958
