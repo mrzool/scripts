@@ -82,8 +82,8 @@ class MyOptionParser(OptionParser):
                              '[default: from,received,date]')
         self.add_option("--list_boxes", action="store_true",
                         help="list all mail boxes in the IMAP server")
-        # self.add_option("--folder_separator", action="folder_separator",
-        #                 help="change folder separator character default")
+        self.add_option("--folder-separator", type="string",
+                        help="change folder separator-character default")
         self.set_defaults(host="localhost",
                           ssl=False,
                           r=False,
@@ -93,7 +93,8 @@ class MyOptionParser(OptionParser):
                           box="INBOX",
                           retry=0,
                           error=None,
-                          time_fields=["from", "received", "date"])
+                          time_fields=["from", "received", "date"],
+                          folder_separator="/")
 
     def enable_gmail(self, option, opt_str, value, parser):
         parser.values.ssl = True
@@ -268,9 +269,7 @@ def upload(imap, box, src, err, time_fields):
     p.endAll()
 
 
-
-def recursive_upload(imap, box, src, err, time_fields, email_only_folders):
-    separator = "."
+def recursive_upload(imap, box, src, err, time_fields, email_only_folders, separator):
     for file in os.listdir(src):
         path = src + os.sep + file
         if os.path.isdir(path):
@@ -279,7 +278,7 @@ def recursive_upload(imap, box, src, err, time_fields, email_only_folders):
                 subbox = fileName
             else:
                 subbox = box + separator + fileName
-            recursive_upload(imap, subbox, path, err, time_fields, email_only_folders)
+            recursive_upload(imap, subbox, path, err, time_fields, email_only_folders, separator)
         elif file.endswith("mbox"):
             print >>sys.stderr, "Found mailbox at {}...".format(path)
             mbox = mailbox.mbox(path, create=False)
@@ -466,6 +465,7 @@ def main(args=None):
 
         recurse = options.pop("r")
         email_only_folders = options.pop("email_only_folders")
+        separator = options.pop("folder_separator")
 
         # Connect to the server and login
         print >>sys.stderr, \
@@ -490,7 +490,7 @@ def main(args=None):
                     err = mailbox.mbox(err)
                 upload(uploader, options["box"], src, err, time_fields)
             else:
-                recursive_upload(uploader, "", src, err, time_fields, email_only_folders)
+                recursive_upload(uploader, "", src, err, time_fields, email_only_folders, separator)
 
         return 0
 
