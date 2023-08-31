@@ -1,0 +1,10 @@
+#!/bin/bash
+
+if [ $# -eq 0 ]; then
+  echo "Usage: $0 <search_string>"
+  exit 1
+fi
+
+search_string="$1"
+
+cat ~/Desktop/dfa/devices_info.csv | grep "$search_string" | xsv select 3
