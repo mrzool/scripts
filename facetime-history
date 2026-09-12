@@ -1,0 +1,18 @@
+#!/bin/bash
+
+DB="$HOME/Library/Application Support/CallHistoryDB/CallHistory.storedata"
+
+sqlite3 -header -column "$DB" "
+SELECT
+  datetime(ZDATE + 978307200, 'unixepoch', 'localtime') AS DATE,
+  printf('%02d:%02d:%02d',
+    CAST(ZDURATION AS INTEGER) / 3600,
+    (CAST(ZDURATION AS INTEGER) % 3600) / 60,
+    CAST(ZDURATION AS INTEGER) % 60
+  ) AS DURATION,
+  ZADDRESS AS ADDRESS
+FROM ZCALLRECORD
+WHERE ZDURATION > 0
+ORDER BY ZDATE DESC
+LIMIT ${1:-20};
+"
